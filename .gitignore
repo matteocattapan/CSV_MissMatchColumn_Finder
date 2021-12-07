@@ -1,2 +1,4 @@
 ﻿CSV_MissMatchColumn_Finder/.vs
 CSV_MissMatchColumn_Finder/obj
+CSV_MissMatchColumn_Finder/bin
+CSV_MissMatchColumn_Finder/Properties/launchSettings.json
