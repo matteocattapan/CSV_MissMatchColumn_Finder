@@ -9,11 +9,9 @@ namespace CSV_MissMatchColumn_Finder
 {
     class Program
     {
-        public static event EventHandler<bool> OnRowCompleted;
-
         private static List<CsvData> _csvSourceData1 = new List<CsvData>();
         private static List<CsvData> _csvSourceData2 = new List<CsvData>();
-        private static List<string> _reportInfectedRows = new List<string>();
+        private static Dictionary<string, bool> _reportRows = new Dictionary<string, bool>();
 
         static void Main(string[] args)
         {
@@ -48,34 +46,39 @@ namespace CSV_MissMatchColumn_Finder
             WorkWithSource();
 
             var savePath = "csv_infected_rows_report.csv";
-            foreach (var row in _reportInfectedRows)
+            if (File.Exists(savePath))
             {
-                File.AppendAllText(savePath, $"{row}" + Environment.NewLine, Encoding.UTF8);
+                try
+                {
+                    File.Delete(savePath);
+                }
+                catch (Exception e)
+                {
+                }
+            }
+
+            foreach (var row in _reportRows)
+            {
+                File.AppendAllText(savePath, $"{row.Key};{row.Value}" + Environment.NewLine, Encoding.UTF8);
             }
         }
 
         private static void WorkWithSource()
         {
-            var currentRow = 1;
             var totalRows = _csvSourceData1.Count;
             var reference_source = _csvSourceData2.AsParallel().Select(o => o.Value).ToList();
-            var tasks = new List<Task>();
-            foreach (var csvData in _csvSourceData1)
-            {
-                tasks.Add(Task.Factory.StartNew(() =>
+
+            Parallel.ForEach(_csvSourceData1, new ParallelOptions { MaxDegreeOfParallelism = 1 },
+                csvData =>
                 {
+                    // logic
                     var find_item = reference_source.Find(o => o == csvData.Value);
-                    if (string.IsNullOrEmpty(find_item))
-                    {
-                        _reportInfectedRows.Add(csvData.ColumnReportResult);
-                    }
-
-                    Console.Write($"\r[{currentRow / totalRows * 100}%] KO [{_reportInfectedRows.Count}] ROWS [{currentRow}/{totalRows}]");
-                    currentRow++;
-                }));
-            }
-
-            Task.WaitAll(tasks.ToArray());
+                    bool find = !string.IsNullOrEmpty(find_item);
+                    _reportRows.Add($"{csvData.Value}|{csvData.ColumnReportResult}", find);
+                    var currentRow = _reportRows.Count;
+                    float percentage = ((float)currentRow / totalRows) * 100;
+                    Console.Write($"\r[{Math.Round(percentage, 0)}%] KO [{_reportRows.Count(c => !c.Value)}] ROWS [{currentRow}/{totalRows}]");
+                });
         }
 
         private static void LoadCsv(string path, int column, int report_column_output, ref List<CsvData> source)
