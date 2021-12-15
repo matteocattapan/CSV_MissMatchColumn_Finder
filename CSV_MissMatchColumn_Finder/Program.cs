@@ -3,21 +3,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace CSV_MissMatchColumn_Finder
 {
-    class Program
+    internal class Program
     {
         public delegate void UpdateConsoleEventHandler(object source, EventArgs args);
 
-        public event UpdateConsoleEventHandler updateEvent;
-
         private static List<CsvData> _csvSourceData1 = new List<CsvData>();
         private static List<CsvData> _csvSourceData2 = new List<CsvData>();
-        private static Dictionary<string, bool> _reportRows = new Dictionary<string, bool>();
+        private static readonly Dictionary<string, bool> _reportRows = new Dictionary<string, bool>();
 
-        static void Main(string[] args)
+        public event UpdateConsoleEventHandler updateEvent;
+
+        private static void Main(string[] args)
         {
             Console.WriteLine("Hello! We start matching soon..");
 
@@ -51,7 +50,6 @@ namespace CSV_MissMatchColumn_Finder
 
             var savePath = "csv_infected_rows_report.csv";
             if (File.Exists(savePath))
-            {
                 try
                 {
                     File.Delete(savePath);
@@ -59,32 +57,30 @@ namespace CSV_MissMatchColumn_Finder
                 catch (Exception e)
                 {
                 }
-            }
 
             foreach (var row in _reportRows)
-            {
                 File.AppendAllText(savePath, $"{row.Key};{row.Value}" + Environment.NewLine, Encoding.UTF8);
-            }
         }
 
         private static void WorkWithSource()
         {
             var reference_source = _csvSourceData2.AsParallel().Select(o => o.Value).ToList();
             foreach (var csvData in _csvSourceData1)
-            {
                 _reportRows.Add($"{csvData.Value}|{csvData.ColumnReportResult}", true);
-            }
 
             var count = _reportRows.Count;
-            Parallel.ForEach(_csvSourceData1, new ParallelOptions { MaxDegreeOfParallelism = 10 },
-                csvData =>
+            var processorMaxDegreese = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.75 * 2.0));
+            _csvSourceData1
+                .AsParallel()
+                .WithDegreeOfParallelism(processorMaxDegreese)
+                .ForAll(csvData =>
                 {
                     // logic
                     var find_item = reference_source.Find(o => o == csvData.Value);
-                    bool find = !string.IsNullOrEmpty(find_item);
+                    var find = !string.IsNullOrEmpty(find_item);
                     var key = $"{csvData.Value}|{csvData.ColumnReportResult}";
                     _reportRows[key] = find;
-                    
+
                     count--;
                     Console.Write($"\r[{count}]");
                 });
@@ -114,14 +110,12 @@ namespace CSV_MissMatchColumn_Finder
 
                 var data = new CsvData();
                 if (data.TryParse(line, currentRow, column, report_column_output, Path.GetFileName(path)))
-                {
                     source.Add(data);
-                }
 
                 currentRow++;
             }
 
-            Console.WriteLine($"Import complete.");
+            Console.WriteLine("Import complete.");
         }
     }
 }
