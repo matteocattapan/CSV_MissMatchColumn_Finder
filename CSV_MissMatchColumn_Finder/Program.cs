@@ -9,6 +9,10 @@ namespace CSV_MissMatchColumn_Finder
 {
     class Program
     {
+        public delegate void UpdateConsoleEventHandler(object source, EventArgs args);
+
+        public event UpdateConsoleEventHandler updateEvent;
+
         private static List<CsvData> _csvSourceData1 = new List<CsvData>();
         private static List<CsvData> _csvSourceData2 = new List<CsvData>();
         private static Dictionary<string, bool> _reportRows = new Dictionary<string, bool>();
@@ -65,19 +69,24 @@ namespace CSV_MissMatchColumn_Finder
 
         private static void WorkWithSource()
         {
-            var totalRows = _csvSourceData1.Count;
             var reference_source = _csvSourceData2.AsParallel().Select(o => o.Value).ToList();
+            foreach (var csvData in _csvSourceData1)
+            {
+                _reportRows.Add($"{csvData.Value}|{csvData.ColumnReportResult}", true);
+            }
 
-            Parallel.ForEach(_csvSourceData1, new ParallelOptions { MaxDegreeOfParallelism = 1 },
+            var count = _reportRows.Count;
+            Parallel.ForEach(_csvSourceData1, new ParallelOptions { MaxDegreeOfParallelism = 10 },
                 csvData =>
                 {
                     // logic
                     var find_item = reference_source.Find(o => o == csvData.Value);
                     bool find = !string.IsNullOrEmpty(find_item);
-                    _reportRows.Add($"{csvData.Value}|{csvData.ColumnReportResult}", find);
-                    var currentRow = _reportRows.Count;
-                    float percentage = ((float)currentRow / totalRows) * 100;
-                    Console.Write($"\r[{Math.Round(percentage, 0)}%] KO [{_reportRows.Count(c => !c.Value)}] ROWS [{currentRow}/{totalRows}]");
+                    var key = $"{csvData.Value}|{csvData.ColumnReportResult}";
+                    _reportRows[key] = find;
+                    
+                    count--;
+                    Console.Write($"\r[{count}]");
                 });
         }
 
