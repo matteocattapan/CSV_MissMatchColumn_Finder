@@ -48,18 +48,20 @@ namespace CSV_MissMatchColumn_Finder
 
             WorkWithSource();
 
-            var savePath = "csv_infected_rows_report.csv";
-            if (File.Exists(savePath))
-                try
-                {
-                    File.Delete(savePath);
-                }
-                catch (Exception e)
-                {
-                }
+            WriteInReport();
+        }
+
+        private static void WriteInReport()
+        {
+            var savePath = "csv_infected_rows_report";
+            var saveExt = ".csv";
+
+            var allReports = Directory.GetFiles("", $"{savePath}*{saveExt}", SearchOption.TopDirectoryOnly);
+            if (allReports.Length > 1)
+                savePath = $"{savePath}_{allReports.Length}";
 
             foreach (var row in _reportRows)
-                File.AppendAllText(savePath, $"{row.Key};{row.Value}" + Environment.NewLine, Encoding.UTF8);
+                File.AppendAllText(savePath + saveExt, $"{row.Key};{row.Value}" + Environment.NewLine, Encoding.UTF8);
         }
 
         private static void WorkWithSource()
