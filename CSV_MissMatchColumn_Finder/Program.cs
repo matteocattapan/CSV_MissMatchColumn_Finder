@@ -56,8 +56,8 @@ namespace CSV_MissMatchColumn_Finder
             var savePath = "csv_infected_rows_report";
             var saveExt = ".csv";
 
-            var allReports = Directory.GetFiles("", $"{savePath}*{saveExt}", SearchOption.TopDirectoryOnly);
-            if (allReports.Length > 1)
+            var allReports = Directory.GetFiles(AppContext.BaseDirectory, $"{savePath}*{saveExt}", SearchOption.TopDirectoryOnly);
+            if (allReports.Length > 0)
                 savePath = $"{savePath}_{allReports.Length}";
 
             foreach (var row in _reportRows)
